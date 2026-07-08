@@ -17,6 +17,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework_simplejwt.token_blacklist',
     'accounts',
     'music',
     'analytics',
@@ -103,3 +104,7 @@ SIMPLE_JWT = {
     'USER_ID_CLAIM': 'user_id',
     'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
 }
+
+AUTH_USER_MODEL = 'accounts.User'
+DEFAULT_FROM_EMAIL = 'noreply@nowplay.local'
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
