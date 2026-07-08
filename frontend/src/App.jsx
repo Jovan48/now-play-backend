@@ -1,3 +1,12 @@
+import React from 'react'
+
+export default function App() {
+  return (
+    <div>
+      <h1>Now Play - Creators (Frontend Scaffold)</h1>
+    </div>
+  )
+}
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
