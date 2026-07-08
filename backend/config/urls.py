@@ -8,6 +8,7 @@ urlpatterns = [
     path('api/accounts/', include('accounts.urls')),
     path('api/music/', include('music.urls')),
     path('api/analytics/', include('analytics.urls')),
+    path('api/admin/', include('admin_panel.urls')),   # Admin panel REST API
 ]
 
 if settings.DEBUG:
