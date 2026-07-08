@@ -44,7 +44,11 @@ class FollowEventCreateSerializer(serializers.ModelSerializer):
 class StreamEventSerializer(serializers.ModelSerializer):
     """Full representation of a stream event (used in listening history)."""
     song_title = serializers.CharField(source='song.title', read_only=True)
-    listener_username = serializers.CharField(source='user.username', read_only=True, default='anonymous')
+    listener_username = serializers.SerializerMethodField()
+
+    def get_listener_username(self, obj):
+        """Return username or 'anonymous' safely when user FK is None."""
+        return obj.user.username if obj.user_id else 'anonymous'
 
     class Meta:
         model = StreamEvent

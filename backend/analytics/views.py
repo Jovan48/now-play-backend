@@ -17,9 +17,7 @@ GET    /api/analytics/top-charts/              Platform-wide top songs (public)
 
 from datetime import timedelta, date
 
-from django.db.models import (
-    Count, Q, DateField, IntegerField
-)
+from django.db.models import Count
 from django.db.models.functions import TruncDate
 from django.utils import timezone
 
@@ -44,7 +42,7 @@ from .serializers import (
 # Helper
 # ---------------------------------------------------------------------------
 
-def _parse_period(request) -> int:
+def _parse_period(request) -> int | None:
     """
     Read ?period=7d|30d|90d|all from query params.
     Returns the number of days, or None for 'all time'.
@@ -157,7 +155,10 @@ class ArtistTopSongsView(APIView):
     def get(self, request):
         days = _parse_period(request)
         cutoff = _since(days)
-        limit = min(int(request.query_params.get('limit', 10)), 50)
+        try:
+            limit = min(int(request.query_params.get('limit', 10)), 50)
+        except (ValueError, TypeError):
+            limit = 10
         artist = request.user
 
         qs = (
@@ -195,7 +196,10 @@ class ArtistListeningHistoryView(APIView):
     def get(self, request):
         days = _parse_period(request)
         cutoff = _since(days)
-        limit = min(int(request.query_params.get('limit', 50)), 200)
+        try:
+            limit = min(int(request.query_params.get('limit', 50)), 200)
+        except (ValueError, TypeError):
+            limit = 50
         artist = request.user
 
         qs = StreamEvent.objects.filter(song__artist=artist).select_related('user', 'song')
@@ -306,7 +310,10 @@ class TopChartsView(APIView):
     def get(self, request):
         days = _parse_period(request)
         cutoff = _since(days)
-        limit = min(int(request.query_params.get('limit', 20)), 100)
+        try:
+            limit = min(int(request.query_params.get('limit', 20)), 100)
+        except (ValueError, TypeError):
+            limit = 20
 
         qs = StreamEvent.objects.all()
         if cutoff:
