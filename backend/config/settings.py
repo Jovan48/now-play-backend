@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     # Project apps
     'accounts',
+    'core',
     'music',
     'analytics',
     'admin_panel',

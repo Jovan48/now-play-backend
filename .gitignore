@@ -1,11 +1,16 @@
 .venv/
 __pycache__/
 db.sqlite3
+backend/db.sqlite3
 media/
 *.pyc
+**/__pycache__/
 env/
 node_modules/
 dist/
 NowPlay_Creators_SRS.docx
 Qwen_markdown.md
 .venv-1/
+.env
+!backend/**/migrations/*.py
+backend/**/migrations/__pycache__/

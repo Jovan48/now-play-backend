@@ -6,3 +6,5 @@ drf-spectacular
 mutagen
 requests
 pillow
+Faker
+pytest

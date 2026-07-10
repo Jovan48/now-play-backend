@@ -1,5 +1,10 @@
-Django>=6.0
+Django>=6.0,<7.0
 djangorestframework
 djangorestframework-simplejwt
+django-cors-headers
+drf-spectacular
 mutagen
+requests
+pillow
+Faker
 pytest
