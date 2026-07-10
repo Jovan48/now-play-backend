@@ -21,6 +21,10 @@ INSTALLED_APPS = [
     'corsheaders',       # Required alongside CorsMiddleware
     # Project apps
     'rest_framework_simplejwt.token_blacklist',
+    'corsheaders',       # Required alongside CorsMiddleware
+    'drf_spectacular',
+    # Project apps
+    'rest_framework_simplejwt.token_blacklist',
     'accounts',
     'music',
     'analytics',
@@ -93,6 +97,14 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Now Play API',
+    'DESCRIPTION': 'API documentation for the Now Play backend.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
 }
 
 from datetime import timedelta
