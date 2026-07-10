@@ -22,9 +22,8 @@ class MusicAppTests(TestCase):
 
     def _create_user(self, email, password):
         from django.contrib.auth import get_user_model
-
         User = get_user_model()
-        return User.objects.create_user(username=email, email=email, password=password)
+        return User.objects.create_user(email=email, password=password)
 
     def _make_mp3_file(self, name='song.mp3', content=b'Fake mp3 content'):
         return SimpleUploadedFile(name, content, content_type='audio/mpeg')

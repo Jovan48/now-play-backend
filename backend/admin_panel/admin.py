@@ -13,7 +13,7 @@ class AuditLogAdmin(admin.ModelAdmin):
 
     list_display  = ('timestamp', 'admin', 'action', 'target_model', 'target_id')
     list_filter   = ('action', 'target_model')
-    search_fields = ('admin__username', 'action', 'target_model')
+    search_fields = ('admin__email', 'action', 'target_model')
     readonly_fields = (
         'admin', 'action', 'target_model', 'target_id', 'detail', 'timestamp'
     )

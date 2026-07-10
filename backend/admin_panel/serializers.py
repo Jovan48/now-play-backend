@@ -17,7 +17,7 @@ from .models import AuditLog
 class AuditLogSerializer(serializers.ModelSerializer):
     # Resolved from the FK relation; falls back gracefully if admin was deleted.
     admin_username = serializers.CharField(
-        source='admin.username',
+        source='admin.email',
         read_only=True,
         default='(deleted)',
     )
@@ -53,7 +53,7 @@ class AdminCreatorSerializer(serializers.Serializer):
     """
 
     id           = serializers.IntegerField()
-    username     = serializers.CharField()
+    username     = serializers.EmailField(source='email')
     email        = serializers.EmailField()
     is_staff     = serializers.BooleanField()
     date_joined  = serializers.DateTimeField()
@@ -65,7 +65,7 @@ class AdminCreatorSerializer(serializers.Serializer):
     song_count   = serializers.SerializerMethodField()
 
     def get_display_name(self, obj):
-        return getattr(obj, 'display_name', None) or obj.get_full_name() or obj.username
+        return getattr(obj, 'display_name', None) or obj.get_full_name() or obj.email
 
     def get_is_verified(self, obj):
         # Default False if the field doesn't exist yet.
@@ -79,7 +79,11 @@ class AdminCreatorSerializer(serializers.Serializer):
         from django.apps import apps
         try:
             Song = apps.get_model('music', 'Song')
-            return Song.objects.filter(creator=obj).count()
+            # Fall back to checking artist__created_by if creator field doesn't exist
+            if hasattr(Song, 'creator'):
+                return Song.objects.filter(creator=obj).count()
+            else:
+                return Song.objects.filter(artist__created_by=obj).count()
         except LookupError:
             return None
 
@@ -122,8 +126,11 @@ class AdminSongSerializer(serializers.Serializer):
 
     def get_creator(self, obj):
         creator = getattr(obj, 'creator', None)
+        if not creator and hasattr(obj, 'artist') and obj.artist:
+            creator = getattr(obj.artist, 'created_by', None)
         if creator:
-            return {'id': creator.id, 'username': creator.username}
+            username = getattr(creator, 'username', None) or getattr(creator, 'email', '')
+            return {'id': creator.id, 'username': username}
         return None
 
     def get_genre(self, obj):
@@ -161,8 +168,11 @@ class AdminAlbumSerializer(serializers.Serializer):
 
     def get_creator(self, obj):
         creator = getattr(obj, 'creator', None)
+        if not creator and hasattr(obj, 'artist') and obj.artist:
+            creator = getattr(obj.artist, 'created_by', None)
         if creator:
-            return {'id': creator.id, 'username': creator.username}
+            username = getattr(creator, 'username', None) or getattr(creator, 'email', '')
+            return {'id': creator.id, 'username': username}
         return None
 
     def get_artist(self, obj):

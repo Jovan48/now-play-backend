@@ -154,9 +154,23 @@ class CreatorListView(APIView):
         qs   = User.objects.filter(is_staff=False).order_by('-date_joined')
 
         if search := request.query_params.get('search'):
-            qs = qs.filter(
-                Q(username__icontains=search) | Q(email__icontains=search)
-            )
+            query = Q(email__icontains=search)
+            try:
+                User._meta.get_field('username')
+                query |= Q(username__icontains=search)
+            except Exception:
+                pass
+            try:
+                User._meta.get_field('stage_name')
+                query |= Q(stage_name__icontains=search)
+            except Exception:
+                pass
+            try:
+                User._meta.get_field('full_name')
+                query |= Q(full_name__icontains=search)
+            except Exception:
+                pass
+            qs = qs.filter(query)
 
         # Optionally filter on custom fields if the accounts team has added them
         for flag in ('is_verified', 'is_suspended'):
@@ -201,7 +215,7 @@ class CreatorDetailView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
         _log(request, 'DELETE_CREATOR', 'CreatorUser', pk,
-             {'username': creator.username, 'email': creator.email})
+             {'username': getattr(creator, 'username', None) or creator.email, 'email': creator.email})
         creator.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -291,20 +305,43 @@ class SongListView(APIView):
         if Song is None:
             return _model_unavailable('Song')
 
-        qs = Song.objects.select_related(
-            'creator', 'genre', 'artist', 'album'
-        )
+        select_fields = []
+        prefetch_fields = []
+        if hasattr(Song, 'artist'):
+            select_fields.append('artist')
+            Artist = _get_model('music', 'Artist')
+            if Artist and hasattr(Artist, 'created_by'):
+                select_fields.append('artist__created_by')
+        if hasattr(Song, 'album'):
+            select_fields.append('album')
+        if hasattr(Song, 'creator'):
+            select_fields.append('creator')
+        if hasattr(Song, 'genre'):
+            select_fields.append('genre')
+        if hasattr(Song, 'genres'):
+            prefetch_fields.append('genres')
+
+        qs = Song.objects.select_related(*select_fields)
+        if prefetch_fields:
+            qs = qs.prefetch_related(*prefetch_fields)
 
         # Dynamic ordering: uploaded_at if available, else pk
         order_field = 'uploaded_at' if hasattr(Song, 'uploaded_at') else '-pk'
         qs = qs.order_by(f'-{order_field}') if order_field != '-pk' else qs.order_by(order_field)
 
         if status_f := request.query_params.get('status'):
-            qs = qs.filter(status=status_f)
+            if hasattr(Song, 'status'):
+                qs = qs.filter(status=status_f)
         if creator_id := request.query_params.get('creator'):
-            qs = qs.filter(creator_id=creator_id)
+            if hasattr(Song, 'creator'):
+                qs = qs.filter(creator_id=creator_id)
+            elif hasattr(Song, 'artist'):
+                qs = qs.filter(artist__created_by_id=creator_id)
         if genre_id := request.query_params.get('genre'):
-            qs = qs.filter(genre_id=genre_id)
+            if hasattr(Song, 'genre'):
+                qs = qs.filter(genre_id=genre_id)
+            elif hasattr(Song, 'genres'):
+                qs = qs.filter(genres__id=genre_id)
         if search := request.query_params.get('search'):
             qs = qs.filter(title__icontains=search)
 
@@ -326,9 +363,26 @@ class SongDetailView(APIView):
         if Song is None:
             return None, True   # (song_obj, model_missing)
         try:
-            return Song.objects.select_related(
-                'creator', 'genre', 'artist', 'album'
-            ).get(pk=pk), False
+            select_fields = []
+            prefetch_fields = []
+            if hasattr(Song, 'artist'):
+                select_fields.append('artist')
+                Artist = _get_model('music', 'Artist')
+                if Artist and hasattr(Artist, 'created_by'):
+                    select_fields.append('artist__created_by')
+            if hasattr(Song, 'album'):
+                select_fields.append('album')
+            if hasattr(Song, 'creator'):
+                select_fields.append('creator')
+            if hasattr(Song, 'genre'):
+                select_fields.append('genre')
+            if hasattr(Song, 'genres'):
+                prefetch_fields.append('genres')
+
+            qs = Song.objects.select_related(*select_fields)
+            if prefetch_fields:
+                qs = qs.prefetch_related(*prefetch_fields)
+            return qs.get(pk=pk), False
         except Song.DoesNotExist:
             return None, False
 
