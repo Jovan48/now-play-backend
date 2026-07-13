@@ -123,7 +123,7 @@ class ArtistSummaryView(APIView):
         cutoff = _since(days)
         artist = request.user
 
-        stream_qs = StreamEvent.objects.filter(song__artist=artist)
+        stream_qs = StreamEvent.objects.filter(song__artist__created_by=artist)
         if cutoff:
             stream_qs = stream_qs.filter(played_at__gte=cutoff)
 
@@ -163,7 +163,7 @@ class ArtistTopSongsView(APIView):
 
         qs = (
             StreamEvent.objects
-            .filter(song__artist=artist)
+            .filter(song__artist__created_by=artist)
         )
         if cutoff:
             qs = qs.filter(played_at__gte=cutoff)
@@ -202,7 +202,7 @@ class ArtistListeningHistoryView(APIView):
             limit = 50
         artist = request.user
 
-        qs = StreamEvent.objects.filter(song__artist=artist).select_related('user', 'song')
+        qs = StreamEvent.objects.filter(song__artist__created_by=artist).select_related('user', 'song')
         if cutoff:
             qs = qs.filter(played_at__gte=cutoff)
 
@@ -223,7 +223,7 @@ class ArtistGeographicView(APIView):
         cutoff = _since(days)
         artist = request.user
 
-        qs = StreamEvent.objects.filter(song__artist=artist).exclude(country_code='')
+        qs = StreamEvent.objects.filter(song__artist__created_by=artist).exclude(country_code='')
         if cutoff:
             qs = qs.filter(played_at__gte=cutoff)
 

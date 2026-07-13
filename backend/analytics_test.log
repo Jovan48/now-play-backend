@@ -1,0 +1,13 @@
+Creating test database for alias 'default'...
+..C:\Users\hamim\AppData\Local\Programs\Python\Python313\Lib\site-packages\jwt\api_jwt.py:147: InsecureKeyLengthWarning: The HMAC key is 10 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+  return self._jws.encode(
+C:\Users\hamim\AppData\Local\Programs\Python\Python313\Lib\site-packages\jwt\api_jwt.py:368: InsecureKeyLengthWarning: The HMAC key is 10 bytes long, which is below the minimum recommended length of 32 bytes for SHA256. See RFC 7518 Section 3.2.
+  decoded = self.decode_complete(
+..........
+----------------------------------------------------------------------
+Ran 12 tests in 44.836s
+
+OK
+Destroying test database for alias 'default'...
+Found 12 test(s).
+System check identified no issues (0 silenced).

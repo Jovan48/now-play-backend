@@ -47,7 +47,10 @@ class StreamEvent(models.Model):
         ]
 
     def __str__(self):
-        user_label = self.user.username if self.user else 'anonymous'
+        if self.user:
+            user_label = getattr(self.user, 'username', None) or getattr(self.user, 'email', 'anonymous')
+        else:
+            user_label = 'anonymous'
         return f"{user_label} played {self.song_id} at {self.played_at:%Y-%m-%d %H:%M}"
 
 
@@ -92,4 +95,6 @@ class FollowEvent(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.follower.username} {self.action}ed {self.artist.username} at {self.timestamp:%Y-%m-%d %H:%M}"
+        follower_label = getattr(self.follower, 'username', None) or getattr(self.follower, 'email', 'unknown')
+        artist_label = getattr(self.artist, 'username', None) or getattr(self.artist, 'email', 'unknown')
+        return f"{follower_label} {self.action}ed {artist_label} at {self.timestamp:%Y-%m-%d %H:%M}"

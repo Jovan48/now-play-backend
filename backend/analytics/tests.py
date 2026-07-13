@@ -40,8 +40,8 @@ class AnalyticsModelTests(TestCase):
     """Unit tests for model creation and __str__ methods."""
 
     def setUp(self):
-        self.artist = User.objects.create_user(username='artist1', password='pass')
-        self.listener = User.objects.create_user(username='listener1', password='pass')
+        self.artist = User.objects.create_user(email='artist1@example.com', password='pass')
+        self.listener = User.objects.create_user(email='listener1@example.com', password='pass')
 
     def test_follow_event_str(self):
         event = FollowEvent.objects.create(
@@ -67,8 +67,12 @@ class LogFollowViewTests(TestCase):
 
     def setUp(self):
         self.client = APIClient()
-        self.artist = User.objects.create_user(username='artist2', password='pass')
-        self.listener = User.objects.create_user(username='listener2', password='pass')
+        self.artist = User.objects.create_user(
+            email='artist2@example.com', password='pass', is_active=True, is_verified=True
+        )
+        self.listener = User.objects.create_user(
+            email='listener2@example.com', password='pass', is_active=True, is_verified=True
+        )
         self.client.credentials(HTTP_AUTHORIZATION=make_jwt(self.listener))
 
     def test_follow_artist(self):
@@ -99,9 +103,15 @@ class ArtistFollowerGrowthViewTests(TestCase):
 
     def setUp(self):
         self.client = APIClient()
-        self.artist = User.objects.create_user(username='artist3', password='pass')
-        self.fan1 = User.objects.create_user(username='fan1', password='pass')
-        self.fan2 = User.objects.create_user(username='fan2', password='pass')
+        self.artist = User.objects.create_user(
+            email='artist3@example.com', password='pass', is_active=True, is_verified=True
+        )
+        self.fan1 = User.objects.create_user(
+            email='fan1@example.com', password='pass', is_active=True, is_verified=True
+        )
+        self.fan2 = User.objects.create_user(
+            email='fan2@example.com', password='pass', is_active=True, is_verified=True
+        )
         self.client.credentials(HTTP_AUTHORIZATION=make_jwt(self.artist))
 
         FollowEvent.objects.create(follower=self.fan1, artist=self.artist, action=FollowEvent.FOLLOW)
@@ -131,8 +141,12 @@ class ArtistSummaryViewTests(TestCase):
 
     def setUp(self):
         self.client = APIClient()
-        self.artist = User.objects.create_user(username='artist4', password='pass')
-        self.fan = User.objects.create_user(username='fan4', password='pass')
+        self.artist = User.objects.create_user(
+            email='artist4@example.com', password='pass', is_active=True, is_verified=True
+        )
+        self.fan = User.objects.create_user(
+            email='fan4@example.com', password='pass', is_active=True, is_verified=True
+        )
         self.client.credentials(HTTP_AUTHORIZATION=make_jwt(self.artist))
 
         FollowEvent.objects.create(follower=self.fan, artist=self.artist, action=FollowEvent.FOLLOW)

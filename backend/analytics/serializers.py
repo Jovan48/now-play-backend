@@ -49,7 +49,9 @@ class StreamEventSerializer(serializers.ModelSerializer):
 
     def get_listener_username(self, obj):
         """Return username or 'anonymous' safely when user FK is None."""
-        return obj.user.username if obj.user_id else 'anonymous'
+        if not obj.user_id:
+            return 'anonymous'
+        return getattr(obj.user, 'username', None) or getattr(obj.user, 'email', 'anonymous')
 
     class Meta:
         model = StreamEvent
