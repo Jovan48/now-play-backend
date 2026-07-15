@@ -18,13 +18,10 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     # Third-party
     'rest_framework',
-    'corsheaders',       # Required alongside CorsMiddleware
-    # Project apps
+    'corsheaders',
     'rest_framework_simplejwt.token_blacklist',
-    'corsheaders',       # Required alongside CorsMiddleware
     'drf_spectacular',
     # Project apps
-    'rest_framework_simplejwt.token_blacklist',
     'accounts',
     'music',
     'analytics',
