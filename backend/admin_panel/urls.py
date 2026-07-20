@@ -12,6 +12,7 @@ urlpatterns = [
     path('creators/<int:pk>/',              views.CreatorDetailView.as_view(),  name='creator-detail'),
     path('creators/<int:pk>/verify/',       views.CreatorVerifyView.as_view(),  name='creator-verify'),
     path('creators/<int:pk>/suspend/',      views.CreatorSuspendView.as_view(), name='creator-suspend'),
+    path('creators/<int:pk>/analytics/', views.CreatorAnalyticsView.as_view(), name='creator-analytics'),
 
     # ── Song Management ────────────────────────────────────────────────────
     path('songs/',                          views.SongListView.as_view(),    name='song-list'),

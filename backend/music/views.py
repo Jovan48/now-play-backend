@@ -26,15 +26,26 @@ class SongViewSet(viewsets.ModelViewSet):
             song.artist.save(update_fields=['created_by'])
 
         return song
-
     @action(detail=True, methods=['post'])
     def play(self, request, pk=None):
         song = self.get_object()
         song.plays = F('plays') + 1
         song.save(update_fields=['plays'])
         song.refresh_from_db()
-        return Response({'id': song.id, 'plays': song.plays}, status=status.HTTP_200_OK)
 
+        # Record a detailed event alongside the simple counter.
+        # seconds_listened / completion_percentage are optional — send them
+        # once your player can report how far a listener got.
+        from analytics.models import PlayEvent
+        PlayEvent.objects.create(
+            song=song,
+            listener=request.user if request.user.is_authenticated else None,
+            seconds_listened=request.data.get('seconds_listened'),
+            completion_percentage=request.data.get('completion_percentage'),
+            source=request.data.get('source', 'other'),
+        )
+
+        return Response({'id': song.id, 'plays': song.plays}, status=status.HTTP_200_OK)
 
 class AlbumViewSet(viewsets.ModelViewSet):
     queryset = models.Album.objects.select_related('artist').prefetch_related('songs').all()

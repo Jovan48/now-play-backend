@@ -36,10 +36,10 @@ class PermissionTests(TestCase):
     def setUp(self):
         self.client  = APIClient()
         self.admin   = User.objects.create_superuser(
-            username='admin', email='admin@test.com', password='adminpass'
+            email='admin@test.com', password='adminpass', is_active=True
         )
         self.creator = User.objects.create_user(
-            username='creator', email='creator@test.com', password='creatorpass'
+            email='creator@test.com', password='creatorpass', is_active=True
         )
 
     # ── Dashboard ─────────────────────────────────────────────────────────
@@ -83,8 +83,8 @@ class PermissionTests(TestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {_jwt(self.admin)}')
         resp = self.client.get('/api/admin/creators/')
         usernames = [u['username'] for u in resp.data['results']]
-        self.assertNotIn('admin', usernames)
-        self.assertIn('creator', usernames)
+        self.assertNotIn('admin@test.com', usernames)
+        self.assertIn('creator@test.com', usernames)
 
     def test_creator_list_search(self):
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {_jwt(self.admin)}')
@@ -98,7 +98,7 @@ class PermissionTests(TestCase):
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {_jwt(self.admin)}')
         resp = self.client.get(f'/api/admin/creators/{self.creator.pk}/')
         self.assertEqual(resp.status_code, status.HTTP_200_OK)
-        self.assertEqual(resp.data['username'], 'creator')
+        self.assertEqual(resp.data['username'], 'creator@test.com')
 
     def test_creator_detail_404_for_staff(self):
         """Admins cannot look up other staff accounts via the creator endpoint."""
@@ -138,7 +138,7 @@ class PermissionTests(TestCase):
 
     def test_audit_log_non_staff_returns_403(self):
         other = User.objects.create_user(
-            username='other', email='other@test.com', password='pass'
+            email='other@test.com', password='pass', is_active=True
         )
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {_jwt(other)}')
         resp = self.client.get('/api/admin/audit-log/')

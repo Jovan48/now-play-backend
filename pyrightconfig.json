@@ -1,0 +1,14 @@
+{
+  "include": ["backend"],
+  "venvPath": ".",
+  "venv": "backend/.venv",
+  "pythonVersion": "3.13",
+  "pythonPlatform": "Windows",
+  "extraPaths": [
+    "backend",
+    "backend/.venv/Lib/site-packages"
+  ],
+  "typeCheckingMode": "off",
+  "reportMissingModuleSource": "none",
+  "reportMissingImports": "none"
+}

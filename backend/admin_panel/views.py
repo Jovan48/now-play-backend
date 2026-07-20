@@ -140,12 +140,9 @@ class DashboardStatsView(APIView):
 
 class CreatorListView(APIView):
     """
-    GET /api/admin/creators/
-
-    Query params:
-      search       — username or email substring match
-      is_verified  — 'true' | 'false'  (only if field exists on User model)
-      is_suspended — 'true' | 'false'  (only if field exists on User model)
+    GET  /api/admin/creators/   — list/search creators
+    POST /api/admin/creators/   — admin-created creator account
+                                   (skips email verification, active immediately)
     """
     permission_classes = [IsStaffUser]
 
@@ -182,6 +179,37 @@ class CreatorListView(APIView):
         page      = paginator.paginate_queryset(qs, request)
         serializer = AdminCreatorSerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
+
+    def post(self, request):
+        User = get_user_model()
+        email = request.data.get('email')
+        password = request.data.get('password')
+
+        if not email or not password:
+            return Response(
+                {'detail': 'email and password are required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if User.objects.filter(email__iexact=email).exists():
+            return Response(
+                {'detail': 'A user with this email already exists.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        creator = User.objects.create_user(
+            email=email,
+            password=password,
+            is_staff=False,
+            is_active=True,
+        )
+        # Admin-created accounts skip the email verification step
+        if hasattr(creator, 'is_verified'):
+            creator.is_verified = True
+            creator.save(update_fields=['is_verified'])
+
+        _log(request, 'CREATE_CREATOR', 'CreatorUser', creator.id, {'email': creator.email})
+        return Response(AdminCreatorSerializer(creator).data, status=status.HTTP_201_CREATED)
 
 
 class CreatorDetailView(APIView):
@@ -476,7 +504,16 @@ class AlbumListView(APIView):
         if Album is None:
             return _model_unavailable('Album')
 
-        qs = Album.objects.select_related('creator', 'artist')
+        select_fields = []
+        if hasattr(Album, 'artist'):
+            select_fields.append('artist')
+            Artist = _get_model('music', 'Artist')
+            if Artist and hasattr(Artist, 'created_by'):
+                select_fields.append('artist__created_by')
+        if hasattr(Album, 'creator'):
+            select_fields.append('creator')
+
+        qs = Album.objects.select_related(*select_fields)
 
         # Order by release_date if the field exists, else by pk desc
         if hasattr(Album, 'release_date'):
@@ -504,8 +541,17 @@ class AlbumDetailView(APIView):
         Album = _get_model('music', 'Album')
         if Album is None:
             return None, True
+        select_fields = []
+        if hasattr(Album, 'artist'):
+            select_fields.append('artist')
+            Artist = _get_model('music', 'Artist')
+            if Artist and hasattr(Artist, 'created_by'):
+                select_fields.append('artist__created_by')
+        if hasattr(Album, 'creator'):
+            select_fields.append('creator')
+
         try:
-            return Album.objects.select_related('creator', 'artist').get(pk=pk), False
+            return Album.objects.select_related(*select_fields).get(pk=pk), False
         except Album.DoesNotExist:
             return None, False
 
@@ -554,18 +600,29 @@ class AnalyticsOverviewView(APIView):
         top_songs = []
         if SongStats and Song:
             try:
+                select_fields = ['song']
+                if hasattr(Song, 'creator'):
+                    select_fields.append('song__creator')
+                elif hasattr(Song, 'artist'):
+                    select_fields.append('song__artist')
+                    Artist = _get_model('music', 'Artist')
+                    if Artist and hasattr(Artist, 'created_by'):
+                        select_fields.append('song__artist__created_by')
+
                 top_qs = (
                     SongStats.objects
-                    .select_related('song', 'song__creator')
+                    .select_related(*select_fields)
                     .order_by('-total_plays')[:10]
                 )
                 for stat in top_qs:
                     creator = getattr(stat.song, 'creator', None)
+                    if not creator and hasattr(stat.song, 'artist') and stat.song.artist:
+                        creator = getattr(stat.song.artist, 'created_by', None)
                     top_songs.append({
                         'id':               stat.song.id,
                         'title':            stat.song.title,
                         'total_plays':      stat.total_plays,
-                        'creator_username': getattr(creator, 'username', None),
+                        'creator_username': getattr(creator, 'username', None) or getattr(creator, 'email', None),
                     })
             except Exception:
                 top_songs = []
@@ -644,3 +701,105 @@ class AuditLogListView(APIView):
         page       = paginator.paginate_queryset(qs, request)
         serializer = AuditLogSerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
+
+
+class CreatorAnalyticsView(APIView):
+    """
+    GET /api/admin/creators/<pk>/analytics/
+
+    Descriptive, per-creator analytics — not just totals.
+    """
+    permission_classes = [IsStaffUser]
+
+    def get(self, request, pk):
+        PlayEvent = _get_model('analytics', 'PlayEvent')
+        if PlayEvent is None:
+            return _model_unavailable('PlayEvent')
+
+        Song = _get_model('music', 'Song')
+        if Song is None:
+            return _model_unavailable('Song')
+
+        songs = Song.objects.filter(artist__created_by_id=pk)
+        song_ids = list(songs.values_list('id', flat=True))
+
+        if not song_ids:
+            return Response({'detail': 'This creator has no songs yet.'})
+
+        events = PlayEvent.objects.filter(song_id__in=song_ids)
+
+        # ── Plays trend (last 30 days) ──────────────────────────────
+        from django.db.models.functions import TruncDate
+        thirty_ago = timezone.now() - timedelta(days=30)
+        plays_per_day = list(
+            events.filter(played_at__gte=thirty_ago)
+            .annotate(date=TruncDate('played_at'))
+            .values('date')
+            .annotate(count=Count('id'))
+            .order_by('date')
+        )
+
+        # ── Top songs by play count ──────────────────────────────────
+        top_songs = list(
+            events.values('song__id', 'song__title')
+            .annotate(total_plays=Count('id'))
+            .order_by('-total_plays')[:5]
+        )
+
+        # ── Repeat listener rate ─────────────────────────────────────
+        listener_counts = (
+            events.exclude(listener__isnull=True)
+            .values('listener')
+            .annotate(play_count=Count('id'))
+        )
+        total_listeners = listener_counts.count()
+        repeat_listeners = listener_counts.filter(play_count__gte=2).count()
+        repeat_rate = (
+            round(repeat_listeners / total_listeners * 100, 1)
+            if total_listeners else None
+        )
+
+        # ── Source breakdown (how people are finding the songs) ──────
+        source_breakdown = list(
+            events.values('source').annotate(count=Count('id')).order_by('-count')
+        )
+
+        # ── Release window: first 48h vs long-tail, per recent song ──
+        release_window = []
+        recent_songs = songs.exclude(release_date__isnull=True).order_by('-release_date')[:5]
+        for song in recent_songs:
+            release_start = timezone.datetime.combine(
+                song.release_date, timezone.datetime.min.time(), tzinfo=timezone.get_current_timezone()
+            )
+            first_48h = events.filter(
+                song=song, played_at__gte=release_start,
+                played_at__lt=release_start + timedelta(hours=48),
+            ).count()
+            total = events.filter(song=song).count()
+            release_window.append({
+                'song': song.title,
+                'first_48h_plays': first_48h,
+                'total_plays': total,
+                'long_tail_plays': total - first_48h,
+            })
+
+        # ── Completion rate (only meaningful once the player reports it) ─
+        completion_events = events.exclude(completion_percentage__isnull=True)
+        avg_completion = None
+        if completion_events.exists():
+            avg_completion = round(
+                sum(e.completion_percentage for e in completion_events) / completion_events.count(), 1
+            )
+
+        return Response({
+            'plays_per_day': [
+                {'date': str(e['date']), 'count': e['count']} for e in plays_per_day
+            ],
+            'top_songs': top_songs,
+            'repeat_listener_rate': repeat_rate,
+            'total_unique_listeners': total_listeners,
+            'source_breakdown': source_breakdown,
+            'release_window_performance': release_window,
+            'average_completion_percentage': avg_completion,
+            'completion_data_available': completion_events.exists(),
+        })

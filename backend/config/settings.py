@@ -1,13 +1,18 @@
 import os
 from pathlib import Path
 
+# Load environment variables from a .env file when present
+from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# load .env from project backend folder
+load_dotenv(BASE_DIR / '.env')
 
 SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'dev-secret')
 
 DEBUG = os.environ.get('DJANGO_DEBUG', '1') == '1'
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -19,18 +24,21 @@ INSTALLED_APPS = [
     # Third-party
     'rest_framework',
     'corsheaders',       # Required alongside CorsMiddleware
+    'whitenoise.runserver_nostatic',
     # Project apps
     'rest_framework_simplejwt.token_blacklist',
     'accounts',
     'music',
     'analytics',
     'admin_panel',
+    'drf_spectacular',
 ]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -76,8 +84,15 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Use whitenoise staticfiles storage when available
+STATICFILES_STORAGE = os.environ.get(
+    'DJANGO_STATICFILES_STORAGE',
+    'whitenoise.storage.CompressedManifestStaticFilesStorage'
+)
 
 # CORS Settings
 CORS_ALLOWED_ORIGINS = [
@@ -93,6 +108,8 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+
 }
 
 from datetime import timedelta
