@@ -6,3 +6,4 @@ drf-spectacular
 mutagen
 requests
 pillow
+gunicorn==23.0.0

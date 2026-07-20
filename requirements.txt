@@ -3,3 +3,4 @@ djangorestframework
 djangorestframework-simplejwt
 mutagen
 pytest
+gunicorn==23.0.0
