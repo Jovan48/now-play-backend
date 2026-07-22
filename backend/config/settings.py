@@ -1,3 +1,4 @@
+import dj_database_url
 import os
 from pathlib import Path
 
@@ -7,7 +8,7 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'dev-secret')
 
 DEBUG = os.environ.get('DJANGO_DEBUG', '1') == '1'
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1','https://frontend-nowplay.vercel.app/dashboard']
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -62,10 +63,11 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+        'default': dj_database_url.config(
+            default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
+            conn_max_age=600,
+            ssl_require=False if DEBUG else True,
+        )
 }
 
 AUTH_PASSWORD_VALIDATORS = []
