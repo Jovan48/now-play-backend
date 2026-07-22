@@ -7,7 +7,7 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'dev-secret')
 
 DEBUG = os.environ.get('DJANGO_DEBUG', '1') == '1'
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1','https://frontend-nowplay.vercel.app/dashboard']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -82,6 +82,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 # CORS Settings
 CORS_ALLOWED_ORIGINS = [
+    "https://frontend-nowplay.vercel.app"
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
