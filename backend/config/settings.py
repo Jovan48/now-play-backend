@@ -130,9 +130,13 @@ SIMPLE_JWT = {
 AUTH_USER_MODEL = 'accounts.User'
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.resend.com'
+EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'resend'
-EMAIL_HOST_PASSWORD = os.environ.get('RESEND_API_KEY')
-DEFAULT_FROM_EMAIL = 'onboarding@resend.dev'  # or use their sandbox sender for testing
+EMAIL_HOST_USER = 'jovanbwire.dev@gmail.com'
+EMAIL_HOST_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD')
+
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'jovanbwire.dev@gmail.com')
+
+# URL of the deployed frontend — used to build email verification/reset links
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')
