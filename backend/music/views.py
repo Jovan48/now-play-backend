@@ -9,48 +9,48 @@ from rest_framework.views import APIView
 from . import models, permissions, serializers, utils
 
 
+class AlbumViewSet(viewsets.ModelViewSet):                                                                                                                
+        queryset = models.Album.objects.select_related('artist').prefetch_related('songs').all()                                                              
+        serializer_class = serializers.AlbumSerializer                                                                                                        
+        permission_classes = [IsAuthenticatedOrReadOnly, permissions.IsOwnerOrReadOnly]                                                                       
+                                                                                                                                                              
+        def perform_create(self, serializer):                                                                                                                 
+            artist = serializer.validated_data.get('artist')                                                                                                  
+                                                                                                                                                              
+            if not artist and self.request.user.is_authenticated:                                                                                             
+                artist_name = getattr(self.request.user, 'stage_name', '') or self.request.user.email.split('@')[0]                                           
+                artist, _ = models.Artist.objects.get_or_create(                                                                                              
+                    created_by=self.request.user,                                                                                                             
+                    defaults={'name': artist_name}                                                                                                            
+                )                                                                                                                                             
+                                                                                                                                                              
+            if artist and artist.created_by is not None and artist.created_by != self.request.user:                                                           
+                raise PermissionDenied('Cannot create an album for an artist you do not own.')
+  
+            album = serializer.save(artist=artist)
+            return album
+  
+
 class SongViewSet(viewsets.ModelViewSet):
-    queryset = models.Song.objects.select_related('artist', 'album').prefetch_related('genres').all()
-    serializer_class = serializers.SongSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly, permissions.IsOwnerOrReadOnly]
-
-    def perform_create(self, serializer):
-        artist = serializer.validated_data['artist']
-        if artist.created_by is not None and artist.created_by != self.request.user:
-            raise PermissionDenied('Cannot add songs to an artist you do not own.')
-
-        song = serializer.save()
-
-        if song.artist.created_by is None and self.request.user.is_authenticated:
-            song.artist.created_by = self.request.user
-            song.artist.save(update_fields=['created_by'])
-
-        return song
-
-    @action(detail=True, methods=['post'])
-    def play(self, request, pk=None):
-        song = self.get_object()
-        song.plays = F('plays') + 1
-        song.save(update_fields=['plays'])
-        song.refresh_from_db()
-        return Response({'id': song.id, 'plays': song.plays}, status=status.HTTP_200_OK)
-
-
-class AlbumViewSet(viewsets.ModelViewSet):
-    queryset = models.Album.objects.select_related('artist').prefetch_related('songs').all()
-    serializer_class = serializers.AlbumSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly, permissions.IsOwnerOrReadOnly]
-
-    def perform_create(self, serializer):
-        artist = serializer.validated_data['artist']
-        if artist.created_by is not None and artist.created_by != self.request.user:
-            raise PermissionDenied('Cannot create an album for an artist you do not own.')
-
-        album = serializer.save()
-        if album.artist.created_by is None and self.request.user.is_authenticated:
-            album.artist.created_by = self.request.user
-            album.artist.save(update_fields=['created_by'])
-        return album
+        queryset = models.Song.objects.select_related('artist', 'album').prefetch_related('genres').all()
+        serializer_class = serializers.SongSerializer
+        permission_classes = [IsAuthenticatedOrReadOnly, permissions.IsOwnerOrReadOnly]
+  
+        def perform_create(self, serializer):
+            artist = serializer.validated_data.get('artist')
+            
+            if not artist and self.request.user.is_authenticated:
+                artist_name = getattr(self.request.user, 'stage_name', '') or self.request.user.email.split('@')[0]
+                artist, _ = models.Artist.objects.get_or_create(
+                    created_by=self.request.user,
+                    defaults={'name': artist_name}
+                )
+  
+            if artist and artist.created_by is not None and artist.created_by != self.request.user:
+                raise PermissionDenied('Cannot add songs to an artist you do not own.')
+  
+            song = serializer.save(artist=artist)
+            return song
 
 
 class ArtistViewSet(viewsets.ReadOnlyModelViewSet):
