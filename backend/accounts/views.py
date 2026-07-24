@@ -1,9 +1,10 @@
+import logging
+
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
-from django.urls import reverse
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from rest_framework import generics, permissions, status
@@ -21,22 +22,24 @@ from .serializers import (
     UserProfileSerializer,
 )
 
+logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
 def _send_message(subject, body, recipient_list):
-    send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, recipient_list, fail_silently=True)
+    send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, recipient_list, fail_silently=False)
 
 
-def build_action_url(request, name, uid, token):
-    path = reverse(name)
-    return request.build_absolute_uri(f'{path}?uid={uid}&token={token}')
+def build_frontend_url(path_segment, uid, token):
+    """Build a URL pointing at the Vercel frontend so the user lands on the UI, not the raw API."""
+    base = settings.FRONTEND_URL.rstrip('/')
+    return f'{base}/{path_segment}?uid={uid}&token={token}'
 
 
-def send_verification_email(user, request):
+def send_verification_email(user):
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     token = default_token_generator.make_token(user)
-    url = build_action_url(request, 'accounts:verify-email', uid, token)
+    url = build_frontend_url('verify-email', uid, token)
     body = (
         f'Welcome to Now Play!\n\n'
         f'Please verify your email address by visiting the link below:\n\n{url}\n\n'
@@ -45,10 +48,10 @@ def send_verification_email(user, request):
     _send_message('Verify your Now Play account', body, [user.email])
 
 
-def send_password_reset_email(user, request):
+def send_password_reset_email(user):
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     token = default_token_generator.make_token(user)
-    url = build_action_url(request, 'accounts:password-reset-confirm', uid, token)
+    url = build_frontend_url('reset-password', uid, token)
     body = (
         f'You requested a password reset for your Now Play account.\n\n'
         f'Use the link below to set a new password:\n\n{url}\n\n'
@@ -72,8 +75,16 @@ class RegisterView(generics.CreateAPIView):
     def create(self, request, *args, **kwargs):
         response = super().create(request, *args, **kwargs)
         user = User.objects.get(email=response.data['email'])
-        send_verification_email(user, request)
-        return Response({'detail': 'Registration successful. Verify your email before logging in.'}, status=status.HTTP_201_CREATED)
+        try:
+            send_verification_email(user)
+        except Exception as exc:
+            # Log the SMTP error in Railway logs, but don't fail the registration.
+            # The user account has been created successfully.
+            logger.error('Failed to send verification email to %s: %s', user.email, exc)
+        return Response(
+            {'detail': 'Registration successful. Check your email to verify your account.'},
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -129,7 +140,7 @@ class PasswordResetRequestView(generics.GenericAPIView):
         email = serializer.validated_data['email']
         user = User.objects.filter(email__iexact=email).first()
         if user:
-            send_password_reset_email(user, request)
+            send_password_reset_email(user)
         return Response({'detail': 'If the email exists, a password reset link has been sent.'}, status=status.HTTP_200_OK)
 
 
