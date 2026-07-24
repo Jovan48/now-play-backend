@@ -18,7 +18,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     # Third-party
-    'djangorestframework',
+    'rest_framework',
     'corsheaders',
     'rest_framework_simplejwt.token_blacklist',
     'drf_spectacular',
