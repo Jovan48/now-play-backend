@@ -124,4 +124,11 @@ SIMPLE_JWT = {
 
 AUTH_USER_MODEL = 'accounts.User'
 DEFAULT_FROM_EMAIL = 'noreply@nowplay.local'
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.resend.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'resend'
+EMAIL_HOST_PASSWORD = os.environ.get('re_Xhrp9hr6_D6aHN49eRrsHKe6Xnk75vCZa')
+DEFAULT_FROM_EMAIL = 'noreply@yourdomain.com'  # or use their sandbox sender for testing
