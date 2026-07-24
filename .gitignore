@@ -9,3 +9,4 @@ dist/
 NowPlay_Creators_SRS.docx
 Qwen_markdown.md
 .venv-1/
+.env
