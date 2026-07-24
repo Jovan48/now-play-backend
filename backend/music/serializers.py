@@ -34,7 +34,7 @@ class ArtistSerializer(serializers.ModelSerializer):
 
 
 class AlbumSerializer(serializers.ModelSerializer):
-    artist = serializers.PrimaryKeyRelatedField(queryset=models.Artist.objects.all(), required=False, read_only=True)
+    artist = serializers.PrimaryKeyRelatedField(queryset=models.Artist.objects.all(), required=False)
     songs = SongNestedSerializer(many=True, read_only=True)
 
     class Meta:
@@ -56,7 +56,7 @@ class AlbumSerializer(serializers.ModelSerializer):
 
 
 class SongSerializer(serializers.ModelSerializer):
-    artist = serializers.PrimaryKeyRelatedField(queryset=models.Artist.objects.all(), required=False, read_only=True)
+    artist = serializers.PrimaryKeyRelatedField(queryset=models.Artist.objects.all(), required=False)
     album = serializers.PrimaryKeyRelatedField(queryset=models.Album.objects.all(), allow_null=True, required=False)
     genres = serializers.PrimaryKeyRelatedField(queryset=models.Genre.objects.all(), many=True, required=False)
 
