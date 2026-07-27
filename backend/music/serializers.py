@@ -78,10 +78,10 @@ class SongSerializer(serializers.ModelSerializer):
         read_only_fields = ['plays', 'created_at']
 
     def validate_audio_file(self, audio_file):
-        valid_types = ['audio/mpeg', 'audio/mp3']
+        valid_types = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/flac']
         content_type = getattr(audio_file, 'content_type', None) or mimetypes.guess_type(audio_file.name)[0]
         if content_type not in valid_types:
-            raise serializers.ValidationError('Audio file must be MP3.')
+            raise serializers.ValidationError('Audio file must be MP3, WAV, or FLAC.')
         if audio_file.size > 50 * 1024 * 1024:
             raise serializers.ValidationError('Audio file must be 50MB or smaller.')
         return audio_file
