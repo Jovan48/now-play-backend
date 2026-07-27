@@ -45,6 +45,12 @@ class AlbumSerializer(serializers.ModelSerializer):
     def to_internal_value(self, data):
         if isinstance(data, dict):
             data = data.copy()
+        elif hasattr(data, 'dict'):
+            data = data.dict()
+        elif hasattr(data, 'items'):
+            data = dict(data.items())
+
+        if isinstance(data, dict):
             if 'coverImage' in data:
                 data['cover_image'] = data.pop('coverImage')
             if 'releaseDate' in data:
@@ -91,6 +97,12 @@ class SongSerializer(serializers.ModelSerializer):
     def to_internal_value(self, data):
         if isinstance(data, dict):
             data = data.copy()
+        elif hasattr(data, 'dict'):
+            data = data.dict()
+        elif hasattr(data, 'items'):
+            data = dict(data.items())
+
+        if isinstance(data, dict):
             if 'audioFile' in data:
                 data['audio_file'] = data.pop('audioFile')
             if 'trackNumber' in data:
