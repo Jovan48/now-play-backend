@@ -1,4 +1,6 @@
 import logging
+import os
+import requests
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -27,7 +29,38 @@ User = get_user_model()
 
 
 def _send_message(subject, body, recipient_list):
-    send_mail(subject, body, settings.DEFAULT_FROM_EMAIL, recipient_list, fail_silently=False)
+    api_key = os.environ.get('BREVO_API_KEY')
+    sender_email = os.environ.get('BREVO_SENDER_EMAIL')
+
+    if not api_key or not sender_email:
+        logger.error('Brevo not configured: missing BREVO_API_KEY or BREVO_SENDER_EMAIL')
+        return
+
+    for recipient in recipient_list:
+        try:
+            resp = requests.post(
+                'https://api.brevo.com/v3/smtp/email',
+                headers={
+                    'accept': 'application/json',
+                    'api-key': api_key,
+                    'content-type': 'application/json',
+                },
+                json={
+                    'sender': {'email': sender_email, 'name': 'Now Play'},
+                    'to': [{'email': recipient}],
+                    'subject': subject,
+                    'textContent': body,
+                },
+                timeout=10,
+            )
+            resp.raise_for_status()
+        except requests.HTTPError as exc:
+            logger.error(
+                'Failed to send email to %s via Brevo: %s — %s',
+                recipient, exc, resp.text if 'resp' in locals() else ''
+            )
+        except requests.RequestException as exc:
+            logger.error('Failed to send email to %s via Brevo: %s', recipient, exc)
 
 
 def build_frontend_url(path_segment, uid, token):
