@@ -42,6 +42,17 @@ class AlbumSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'artist', 'cover_image', 'release_date', 'created_at', 'songs']
         read_only_fields = ['created_at', 'songs']
 
+    def to_internal_value(self, data):
+        if isinstance(data, dict):
+            data = data.copy()
+            if 'coverImage' in data:
+                data['cover_image'] = data.pop('coverImage')
+            if 'releaseDate' in data:
+                data['release_date'] = data.pop('releaseDate')
+            if 'artistId' in data:
+                data['artist'] = data.pop('artistId')
+        return super().to_internal_value(data)
+
     def validate_cover_image(self, cover_image):
         if cover_image is None:
             return cover_image
@@ -76,6 +87,21 @@ class SongSerializer(serializers.ModelSerializer):
             'created_at',
         ]
         read_only_fields = ['plays', 'created_at']
+
+    def to_internal_value(self, data):
+        if isinstance(data, dict):
+            data = data.copy()
+            if 'audioFile' in data:
+                data['audio_file'] = data.pop('audioFile')
+            if 'trackNumber' in data:
+                data['track_number'] = data.pop('trackNumber')
+            if 'releaseDate' in data:
+                data['release_date'] = data.pop('releaseDate')
+            if 'artistId' in data:
+                data['artist'] = data.pop('artistId')
+            if 'albumId' in data:
+                data['album'] = data.pop('albumId')
+        return super().to_internal_value(data)
 
     def validate_audio_file(self, audio_file):
         valid_types = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/flac']
