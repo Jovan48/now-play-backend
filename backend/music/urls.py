@@ -5,6 +5,7 @@ from . import views
 
 router = DefaultRouter()
 router.register(r'songs', views.SongViewSet, basename='song')
+router.register(r'tracks', views.SongViewSet, basename='track')
 router.register(r'albums', views.AlbumViewSet, basename='album')
 router.register(r'artists', views.ArtistViewSet, basename='artist')
 
