@@ -15,6 +15,7 @@ urlpatterns = [
         path('api/', include('accounts.urls')),
         
         path('api/', include('music.urls')),
+        path('api/album/', include('music.urls')),
        
         
         path('api/analytics/', include('analytics.urls')),
