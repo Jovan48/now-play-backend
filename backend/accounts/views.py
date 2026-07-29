@@ -23,6 +23,9 @@ from .serializers import (
     PasswordResetSerializer,
     RegistrationSerializer,
     UserProfileSerializer,
+    MagicLinkRequestSerializer,
+    MagicLinkVerifySerializer,
+    LogoutSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -143,12 +146,14 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
 
 class LogoutView(generics.GenericAPIView):
+    serializer_class = LogoutSerializer  # <-- ADDED THIS
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        refresh_token = request.data.get('refresh')
-        if not refresh_token:
-            return Response({'detail': 'Refresh token is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        refresh_token = serializer.validated_data['refresh']
         try:
             token = RefreshToken(refresh_token)
             token.blacklist()
@@ -230,20 +235,21 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
 # ==========================================
 # NEW: MAGIC LINK VIEWS
 # ==========================================
+
 class SendMagicLinkView(generics.GenericAPIView):
     """
     Accepts an email, generates a secure time-limited token, 
     and sends a magic link pointing to the frontend.
     """
+    serializer_class = MagicLinkRequestSerializer  # <-- ADDED THIS
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        email = request.data.get('email')
-        if not email:
-            return Response({'detail': 'Email is required.'}, status=status.HTTP_400_BAD_REQUEST)
-            
-        # Standardize email to prevent case-sensitivity issues
-        email = email.strip().lower()
+        # Use the serializer to validate the email
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        email = serializer.validated_data['email'].strip().lower()
         
         try:
             send_magic_link_email(email)
@@ -259,12 +265,15 @@ class VerifyMagicLinkView(generics.GenericAPIView):
     Accepts the magic link token, verifies it, creates/gets the user,
     and returns JWT tokens.
     """
+    serializer_class = MagicLinkVerifySerializer  # <-- ADDED THIS
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        token = request.data.get('token')
-        if not token:
-            return Response({'detail': 'Token is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        # Use the serializer to validate the token
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        
+        token = serializer.validated_data['token']
 
         signer = signing.TimestampSigner()
         try:

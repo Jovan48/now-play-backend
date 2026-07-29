@@ -62,3 +62,12 @@ class UserProfileSerializer(serializers.ModelSerializer):
         model = User
         fields = ['email', 'full_name', 'stage_name', 'bio', 'genres', 'profile_photo', 'city', 'country']
         read_only_fields = ['email']
+
+class MagicLinkRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+
+class MagicLinkVerifySerializer(serializers.Serializer):
+    token = serializers.CharField(required=True)
+
+class LogoutSerializer(serializers.Serializer):
+    refresh = serializers.CharField(required=True)
