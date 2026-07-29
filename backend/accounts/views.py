@@ -5,6 +5,7 @@ import requests
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
+from django.core import signing  # <-- NEW: For secure magic link tokens
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from django.utils.encoding import force_bytes, force_str
@@ -93,6 +94,25 @@ def send_password_reset_email(user):
     _send_message('Reset your Now Play password', body, [user.email])
 
 
+# ==========================================
+# NEW: MAGIC LINK HELPER
+# ==========================================
+def send_magic_link_email(email):
+    """Generates a time-limited token and sends the magic link."""
+    signer = signing.TimestampSigner()
+    token = signer.sign(email)
+    
+    base = settings.FRONTEND_URL.rstrip('/')
+    url = f'{base}/verify-magic-link?token={token}'
+    
+    body = (
+        f'Here is your magic link to sign in to Now Play!\n\n'
+        f'Click the link below to log in or create your account:\n\n{url}\n\n'
+        'This link will expire in 15 minutes. If you did not request this, please ignore this message.'
+    )
+    _send_message('Your Now Play Magic Link', body, [email])
+
+
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)
@@ -111,8 +131,6 @@ class RegisterView(generics.CreateAPIView):
         try:
             send_verification_email(user)
         except Exception as exc:
-            # Log the SMTP error in Railway logs, but don't fail the registration.
-            # The user account has been created successfully.
             logger.error('Failed to send verification email to %s: %s', user.email, exc)
         return Response(
             {'detail': 'Registration successful. Check your email to verify your account.'},
@@ -207,3 +225,79 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+# ==========================================
+# NEW: MAGIC LINK VIEWS
+# ==========================================
+class SendMagicLinkView(generics.GenericAPIView):
+    """
+    Accepts an email, generates a secure time-limited token, 
+    and sends a magic link pointing to the frontend.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        if not email:
+            return Response({'detail': 'Email is required.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        # Standardize email to prevent case-sensitivity issues
+        email = email.strip().lower()
+        
+        try:
+            send_magic_link_email(email)
+        except Exception as exc:
+            logger.error('Failed to send magic link email to %s: %s', email, exc)
+            
+        # Always return 200 to prevent email enumeration attacks
+        return Response({'detail': 'If the email is valid, a magic link has been sent.'}, status=status.HTTP_200_OK)
+
+
+class VerifyMagicLinkView(generics.GenericAPIView):
+    """
+    Accepts the magic link token, verifies it, creates/gets the user,
+    and returns JWT tokens.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        token = request.data.get('token')
+        if not token:
+            return Response({'detail': 'Token is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        signer = signing.TimestampSigner()
+        try:
+            # Verify token signature and ensure it's not older than 15 minutes (900 seconds)
+            email = signer.unsign(token, max_age=900)
+        except signing.SignatureExpired:
+            return Response({'detail': 'Magic link has expired. Please request a new one.'}, status=status.HTTP_400_BAD_REQUEST)
+        except signing.BadSignature:
+            return Response({'detail': 'Invalid or tampered magic link.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        email = email.strip().lower()
+
+        # Get or create the user (Passwordless sign-up/login)
+        user, created = User.objects.get_or_create(
+            email=email,
+            defaults={'is_verified': True, 'is_active': True}
+        )
+        
+        # If user existed but wasn't verified, verify them now since they proved email ownership
+        if not created and not user.is_verified:
+            user.is_verified = True
+            user.is_active = True
+            user.save(update_fields=['is_verified', 'is_active'])
+            
+        if not user.is_active:
+            return Response({'detail': 'This account has been deactivated.'}, status=status.HTTP_403_FORBIDDEN)
+
+        # Generate JWT tokens for the frontend
+        refresh = RefreshToken.for_user(user)
+        
+        return Response({
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+            'is_new_user': created,
+            'detail': 'Successfully authenticated.'
+        }, status=status.HTTP_200_OK)
