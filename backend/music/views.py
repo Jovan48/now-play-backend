@@ -24,7 +24,7 @@ class AlbumViewSet(viewsets.ModelViewSet):
                     defaults={'name': artist_name}                                                                                                            
                 )                                                                                                                                             
                                                                                                                                                               
-            if artist and artist.created_by is not None and artist.created_by != self.request.user:                                                           
+            if artist and artist.created_by is not None and artist.created_by != self.request.user and not getattr(self.request.user, 'is_staff', False):
                 raise PermissionDenied('Cannot create an album for an artist you do not own.')
   
             album = serializer.save(artist=artist)
@@ -46,7 +46,7 @@ class SongViewSet(viewsets.ModelViewSet):
                     defaults={'name': artist_name}
                 )
   
-            if artist and artist.created_by is not None and artist.created_by != self.request.user:
+            if artist and artist.created_by is not None and artist.created_by != self.request.user and not getattr(self.request.user, 'is_staff', False):
                 raise PermissionDenied('Cannot add songs to an artist you do not own.')
   
             song = serializer.save(artist=artist)
