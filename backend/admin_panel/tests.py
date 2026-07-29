@@ -36,10 +36,10 @@ class PermissionTests(TestCase):
     def setUp(self):
         self.client  = APIClient()
         self.admin   = User.objects.create_superuser(
-            username='admin', email='admin@test.com', password='adminpass'
+            email='admin@test.com', password='adminpass'
         )
         self.creator = User.objects.create_user(
-            username='creator', email='creator@test.com', password='creatorpass'
+            email='creator@test.com', password='creatorpass'
         )
 
     # ── Dashboard ─────────────────────────────────────────────────────────
@@ -138,7 +138,7 @@ class PermissionTests(TestCase):
 
     def test_audit_log_non_staff_returns_403(self):
         other = User.objects.create_user(
-            username='other', email='other@test.com', password='pass'
+            email='other@test.com', password='pass'
         )
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {_jwt(other)}')
         resp = self.client.get('/api/admin/audit-log/')

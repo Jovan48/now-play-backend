@@ -350,6 +350,54 @@ class SongListView(APIView):
         serializer = AdminSongSerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
 
+    def post(self, request):
+        Song = _get_model('music', 'Song')
+        Artist = _get_model('music', 'Artist')
+        Album = _get_model('music', 'Album')
+        if Song is None:
+            return _model_unavailable('Song')
+
+        title = request.data.get('title')
+        artist_name = request.data.get('artist_name') or request.data.get('artist')
+        album_id = request.data.get('album_id') or request.data.get('album')
+        audio_file = request.FILES.get('audio_file')
+
+        if not title:
+            return Response({'detail': 'Title is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        artist = None
+        if artist_name and Artist:
+            artist, _ = Artist.objects.get_or_create(
+                name=artist_name,
+                defaults={'created_by': request.user}
+            )
+        elif Artist:
+            artist = Artist.objects.filter(created_by=request.user).first()
+            if not artist:
+                artist = Artist.objects.create(name=getattr(request.user, 'stage_name', '') or 'Admin', created_by=request.user)
+
+        album = None
+        if album_id and Album:
+            try:
+                album = Album.objects.get(pk=album_id)
+            except (Album.DoesNotExist, ValueError):
+                pass
+
+        song_kwargs = {
+            'title': title,
+            'artist': artist,
+        }
+        if hasattr(Song, 'album') and album:
+            song_kwargs['album'] = album
+        if hasattr(Song, 'audio_file') and audio_file:
+            song_kwargs['audio_file'] = audio_file
+        if hasattr(Song, 'status'):
+            song_kwargs['status'] = 'approved'
+
+        song = Song.objects.create(**song_kwargs)
+        _log(request, 'PUBLISH_SONG', 'Song', song.pk, {'title': song.title})
+        return Response(AdminSongSerializer(song).data, status=status.HTTP_201_CREATED)
+
 
 class SongDetailView(APIView):
     """
@@ -476,7 +524,11 @@ class AlbumListView(APIView):
         if Album is None:
             return _model_unavailable('Album')
 
-        qs = Album.objects.select_related('creator', 'artist')
+        select_fields = ['artist']
+        if hasattr(Album, 'creator'):
+            select_fields.append('creator')
+
+        qs = Album.objects.select_related(*select_fields)
 
         # Order by release_date if the field exists, else by pk desc
         if hasattr(Album, 'release_date'):
@@ -491,6 +543,44 @@ class AlbumListView(APIView):
         page       = paginator.paginate_queryset(qs, request)
         serializer = AdminAlbumSerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
+
+    def post(self, request):
+        Album = _get_model('music', 'Album')
+        Artist = _get_model('music', 'Artist')
+        if Album is None:
+            return _model_unavailable('Album')
+
+        title = request.data.get('title')
+        artist_name = request.data.get('artist_name') or request.data.get('artist')
+        cover_image = request.FILES.get('cover_image')
+        release_date = request.data.get('release_date')
+
+        if not title:
+            return Response({'detail': 'Title is required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        artist = None
+        if artist_name and Artist:
+            artist, _ = Artist.objects.get_or_create(
+                name=artist_name,
+                defaults={'created_by': request.user}
+            )
+        elif Artist:
+            artist = Artist.objects.filter(created_by=request.user).first()
+            if not artist:
+                artist = Artist.objects.create(name=getattr(request.user, 'stage_name', '') or 'Admin', created_by=request.user)
+
+        album_kwargs = {
+            'title': title,
+            'artist': artist,
+        }
+        if hasattr(Album, 'cover_image') and cover_image:
+            album_kwargs['cover_image'] = cover_image
+        if hasattr(Album, 'release_date') and release_date:
+            album_kwargs['release_date'] = release_date
+
+        album = Album.objects.create(**album_kwargs)
+        _log(request, 'PUBLISH_ALBUM', 'Album', album.pk, {'title': album.title})
+        return Response(AdminAlbumSerializer(album).data, status=status.HTTP_201_CREATED)
 
 
 class AlbumDetailView(APIView):
