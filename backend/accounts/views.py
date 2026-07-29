@@ -235,8 +235,6 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
 # ==========================================
 # NEW: MAGIC LINK VIEWS
 # ==========================================
-# Make sure these are imported at the top of your views.py:
-# from .serializers import MagicLinkRequestSerializer, MagicLinkVerifySerializer
 
 class SendMagicLinkView(generics.GenericAPIView):
     """
