@@ -1,8 +1,29 @@
 import mimetypes
 
+from django.http import QueryDict
 from rest_framework import serializers
 
 from . import models, utils
+
+
+def _mutable_copy(data):
+    # QueryDict is a dict subclass, so isinstance(data, dict) is True for
+    # multipart/form-data. QueryDict.copy() is a DEEP copy under the hood
+    # (self.__deepcopy__({})) and crashes on uploaded files:
+    # "TypeError: cannot pickle 'BufferedRandom' instances". Rebuild via
+    # setlist instead, which copies references, not file contents.
+    if isinstance(data, QueryDict):
+        new_data = QueryDict(mutable=True)
+        for key in data:
+            new_data.setlist(key, data.getlist(key))
+        return new_data
+    if isinstance(data, dict):
+        return data.copy()
+    if hasattr(data, 'dict'):
+        return data.dict()
+    if hasattr(data, 'items'):
+        return dict(data.items())
+    return data
 
 
 class GenreSerializer(serializers.ModelSerializer):
@@ -43,12 +64,7 @@ class AlbumSerializer(serializers.ModelSerializer):
         read_only_fields = ['created_at', 'songs']
 
     def to_internal_value(self, data):
-        if isinstance(data, dict):
-            data = data.copy()
-        elif hasattr(data, 'dict'):
-            data = data.dict()
-        elif hasattr(data, 'items'):
-            data = dict(data.items())
+        data = _mutable_copy(data)
 
         if isinstance(data, dict):
             if 'coverImage' in data:
@@ -95,12 +111,7 @@ class SongSerializer(serializers.ModelSerializer):
         read_only_fields = ['plays', 'created_at']
 
     def to_internal_value(self, data):
-        if isinstance(data, dict):
-            data = data.copy()
-        elif hasattr(data, 'dict'):
-            data = data.dict()
-        elif hasattr(data, 'items'):
-            data = dict(data.items())
+        data = _mutable_copy(data)
 
         if isinstance(data, dict):
             if 'audioFile' in data:
