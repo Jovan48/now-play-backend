@@ -9,48 +9,55 @@ from rest_framework.views import APIView
 from . import models, permissions, serializers, utils
 
 
-class AlbumViewSet(viewsets.ModelViewSet):                                                                                                                
-        queryset = models.Album.objects.select_related('artist').prefetch_related('songs').all()                                                              
-        serializer_class = serializers.AlbumSerializer                                                                                                        
-        permission_classes = [IsAuthenticatedOrReadOnly, permissions.IsOwnerOrReadOnly]                                                                       
-                                                                                                                                                              
-        def perform_create(self, serializer):                                                                                                                 
-            artist = serializer.validated_data.get('artist')                                                                                                  
-                                                                                                                                                              
-            if not artist and self.request.user.is_authenticated:                                                                                             
-                artist_name = getattr(self.request.user, 'stage_name', '') or self.request.user.email.split('@')[0]                                           
-                artist, _ = models.Artist.objects.get_or_create(                                                                                              
-                    created_by=self.request.user,                                                                                                             
-                    defaults={'name': artist_name}                                                                                                            
-                )                                                                                                                                             
-                                                                                                                                                              
-            if artist and artist.created_by is not None and artist.created_by != self.request.user and not getattr(self.request.user, 'is_staff', False):
-                raise PermissionDenied('Cannot create an album for an artist you do not own.')
-  
-            album = serializer.save(artist=artist)
-            return album
-  
+class AlbumViewSet(viewsets.ModelViewSet):
+    queryset = models.Album.objects.select_related('artist').prefetch_related('songs').all()
+    serializer_class = serializers.AlbumSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly, permissions.IsOwnerOrReadOnly]
+
+    def perform_create(self, serializer):
+        artist = serializer.validated_data.get('artist')
+
+        if not artist and self.request.user.is_authenticated:
+            artist_name = getattr(self.request.user, 'stage_name', '') or self.request.user.email.split('@')[0]
+            artist, _ = models.Artist.objects.get_or_create(
+                created_by=self.request.user,
+                defaults={'name': artist_name}
+            )
+
+        if artist and artist.created_by is not None and artist.created_by != self.request.user and not getattr(self.request.user, 'is_staff', False):
+            raise PermissionDenied('Cannot create an album for an artist you do not own.')
+
+        album = serializer.save(artist=artist)
+        return album
+
 
 class SongViewSet(viewsets.ModelViewSet):
-        queryset = models.Song.objects.select_related('artist', 'album').prefetch_related('genres').all()
-        serializer_class = serializers.SongSerializer
-        permission_classes = [IsAuthenticatedOrReadOnly, permissions.IsOwnerOrReadOnly]
-  
-        def perform_create(self, serializer):
-            artist = serializer.validated_data.get('artist')
-            
-            if not artist and self.request.user.is_authenticated:
-                artist_name = getattr(self.request.user, 'stage_name', '') or self.request.user.email.split('@')[0]
-                artist, _ = models.Artist.objects.get_or_create(
-                    created_by=self.request.user,
-                    defaults={'name': artist_name}
-                )
-  
-            if artist and artist.created_by is not None and artist.created_by != self.request.user and not getattr(self.request.user, 'is_staff', False):
-                raise PermissionDenied('Cannot add songs to an artist you do not own.')
-  
-            song = serializer.save(artist=artist)
-            return song
+    queryset = models.Song.objects.select_related('artist', 'album').prefetch_related('genres').all()
+    serializer_class = serializers.SongSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly, permissions.IsOwnerOrReadOnly]
+
+    def perform_create(self, serializer):
+        artist = serializer.validated_data.get('artist')
+        
+        if not artist and self.request.user.is_authenticated:
+            artist_name = getattr(self.request.user, 'stage_name', '') or self.request.user.email.split('@')[0]
+            artist, _ = models.Artist.objects.get_or_create(
+                created_by=self.request.user,
+                defaults={'name': artist_name}
+            )
+
+        if artist and artist.created_by is not None and artist.created_by != self.request.user and not getattr(self.request.user, 'is_staff', False):
+            raise PermissionDenied('Cannot add songs to an artist you do not own.')
+
+        song = serializer.save(artist=artist)
+        return song
+
+    @action(detail=True, methods=['post'])
+    def play(self, request, pk=None):
+        song = self.get_object()
+        models.Song.objects.filter(pk=song.pk).update(plays=F('plays') + 1)
+        song.refresh_from_db()
+        return Response({'id': song.id, 'plays': song.plays})
 
 
 class ArtistViewSet(viewsets.ReadOnlyModelViewSet):

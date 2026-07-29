@@ -100,7 +100,7 @@ class MusicAppTests(TestCase):
     def test_audio_file_validation_rejects_invalid_type(self):
         self.client.force_authenticate(user=self.user)
         url = reverse('song-list')
-        invalid_file = SimpleUploadedFile('song.wav', b'Fake content', content_type='audio/wav')
+        invalid_file = SimpleUploadedFile('song.txt', b'Fake content', content_type='text/plain')
         response = self.client.post(url, {
             'title': 'Invalid File',
             'artist': self.artist.id,

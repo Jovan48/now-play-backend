@@ -6,6 +6,9 @@ class IsOwnerOrReadOnly(permissions.BasePermission):
         if request.method in permissions.SAFE_METHODS:
             return True
 
+        if request.user and request.user.is_authenticated and (getattr(request.user, 'is_staff', False) or getattr(request.user, 'is_superuser', False)):
+            return True
+
         owner = None
         if hasattr(obj, 'artist') and getattr(obj, 'artist', None) is not None:
             owner = getattr(obj.artist, 'created_by', None)
