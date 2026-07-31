@@ -39,7 +39,6 @@ class Artist(models.Model):
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
-        db_column='created_by',
         related_name='artists',
     )
     created_at = models.DateTimeField(auto_now_add=True)
