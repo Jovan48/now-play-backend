@@ -26,6 +26,19 @@ def _mutable_copy(data):
     return data
 
 
+def _validate_cover_image(cover_image):
+    if cover_image is None:
+        return cover_image
+
+    valid_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+    content_type = getattr(cover_image, 'content_type', None) or mimetypes.guess_type(cover_image.name)[0]
+    if content_type not in valid_types and not cover_image.name.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')):
+        raise serializers.ValidationError('Cover image must be JPEG, PNG, or WebP.')
+    if cover_image.size > 10 * 1024 * 1024:
+        raise serializers.ValidationError('Cover image must be 10MB or smaller.')
+    return cover_image
+
+
 class GenreSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Genre
@@ -88,16 +101,7 @@ class AlbumSerializer(serializers.ModelSerializer):
         return super().to_internal_value(data)
 
     def validate_cover_image(self, cover_image):
-        if cover_image is None:
-            return cover_image
-
-        valid_types = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
-        content_type = getattr(cover_image, 'content_type', None) or mimetypes.guess_type(cover_image.name)[0]
-        if content_type not in valid_types and not cover_image.name.lower().endswith(('.jpg', '.jpeg', '.png', '.webp')):
-            raise serializers.ValidationError('Cover image must be JPEG, PNG, or WebP.')
-        if cover_image.size > 10 * 1024 * 1024:
-            raise serializers.ValidationError('Cover image must be 10MB or smaller.')
-        return cover_image
+        return _validate_cover_image(cover_image)
 
 
 class SongSerializer(serializers.ModelSerializer):
@@ -113,6 +117,7 @@ class SongSerializer(serializers.ModelSerializer):
             'artist',
             'album',
             'audio_file',
+            'cover_image',
             'duration',
             'track_number',
             'plays',
@@ -128,6 +133,8 @@ class SongSerializer(serializers.ModelSerializer):
         if isinstance(data, dict):
             if 'audioFile' in data and 'audio_file' not in data:
                 data['audio_file'] = data.pop('audioFile')
+            if 'coverImage' in data and 'cover_image' not in data:
+                data['cover_image'] = data.pop('coverImage')
             if 'trackNumber' in data and 'track_number' not in data:
                 data['track_number'] = data.pop('trackNumber')
             if 'releaseDate' in data and 'release_date' not in data:
@@ -170,6 +177,9 @@ class SongSerializer(serializers.ModelSerializer):
         if audio_file.size > 100 * 1024 * 1024:
             raise serializers.ValidationError('Audio file must be 100MB or smaller.')
         return audio_file
+
+    def validate_cover_image(self, cover_image):
+        return _validate_cover_image(cover_image)
 
     def validate(self, attrs):
         # Auto-set artist from album if album is provided but artist is omitted

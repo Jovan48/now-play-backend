@@ -14,6 +14,10 @@ def song_audio_upload_path(instance, filename):
     return f'songs/{instance.artist.name[:50]}/{filename}'
 
 
+def song_cover_upload_path(instance, filename):
+    return f'songs/{instance.artist.name[:50]}/covers/{filename}'
+
+
 class Genre(models.Model):
     name = models.CharField(max_length=120, unique=True)
     slug = models.SlugField(max_length=120, unique=True)
@@ -81,6 +85,7 @@ class Song(models.Model):
         related_name='songs',
     )
     audio_file = models.FileField(upload_to=song_audio_upload_path)
+    cover_image = models.ImageField(upload_to=song_cover_upload_path, null=True, blank=True)
     duration = models.PositiveIntegerField(null=True, blank=True)
     track_number = models.PositiveIntegerField(null=True, blank=True)
     plays = models.PositiveIntegerField(default=0)

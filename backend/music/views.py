@@ -60,6 +60,13 @@ class SongViewSet(viewsets.ModelViewSet):
         return Response({'id': song.id, 'plays': song.plays})
 
 
+class GenreViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = models.Genre.objects.all()
+    serializer_class = serializers.GenreSerializer
+    permission_classes = [AllowAny]
+    pagination_class = None
+
+
 class ArtistViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = models.Artist.objects.prefetch_related('albums', 'songs').all()
     serializer_class = serializers.ArtistSerializer
